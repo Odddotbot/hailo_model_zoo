@@ -29,6 +29,7 @@ from hailo_model_zoo.core.main_utils import (
 )
 from hailo_model_zoo.utils.hw_utils import DEVICE_NAMES, DEVICES, INFERENCE_TARGETS, TARGETS
 from hailo_model_zoo.utils.logger import get_logger
+import ultralytics # For YOLO .pt -> .onnx conversion
 
 
 def _ensure_performance(model_name, model_script, performance, hw_arch, logger):
@@ -84,6 +85,18 @@ def _ensure_optimized(runner, logger, args, network_info):
     model_script = _extract_model_script_path(
         network_info.paths.alls_script, args.model_script_path, args.hw_arch, args.performance
     )
+
+    # Set optimization level and comrpression level as specified in arguments
+    if args.optimization_level is not None or args.compression_level is not None:
+        with open(model_script, 'r') as file:
+            contents = file.readlines()
+        contents = [line for line in contents if not line.startswith('model_optimization_flavor')]
+        line_to_add = f"model_optimization_flavor(optimization_level={args.optimization_level}, compression_level={args.compression_level})\n"
+        contents.append(line_to_add)
+        model_script = model_script.with_stem(model_script.stem + '_tmp')
+        with open(model_script , 'w') as file:
+            file.writelines(contents)
+
     _ensure_performance(network_info.network.network_name, model_script, args.performance, args.hw_arch, logger)
     calib_feed_callback = prepare_calibration_data(
         runner, network_info, args.calib_path, logger, args.input_conversion, args.resize
@@ -98,6 +111,9 @@ def _ensure_optimized(runner, logger, args, network_info):
         args.resize,
         args.input_conversion,
         args.classes,
+        args.imgsize,
+        args.nms_scores_th,
+        args.nms_iou_th
     )
 
 
@@ -105,7 +121,15 @@ def _ensure_parsed(runner, logger, network_info, args):
     if runner.state != States.UNINITIALIZED:
         return
 
-    parse_model(runner, network_info, ckpt_path=args.ckpt_path, results_dir=args.results_dir, logger=logger)
+    # Use .pt file and convert to .onnx if provided in arguments
+    if args.pt_filepath: 
+        model = ultralytics.models.yolo.model.YOLO(args.pt_filepath)
+        model.export(format="onnx", imgsz=args.imgsize, opset=11)
+        ckpt_path = args.pt_filepath.replace(".pt", ".onnx")
+    else:
+        ckpt_path = args.ckpt_path
+
+    parse_model(runner, network_info, ckpt_path=ckpt_path, results_dir=args.results_dir, logger=logger)
 
 
 def configure_hef_tf1(hef_path, target):
@@ -232,13 +256,16 @@ def optimize(args):
         args.resize,
         args.input_conversion,
         args.classes,
+        args.imgsize,
+        args.nms_scores_th,
+        args.nms_iou_th
     )
 
 
 def compile(args):
     logger = get_logger()
     nodes = [args.start_node_names, args.end_node_names]
-    network_info = get_network_info(args.model_name, yaml_path=args.yaml_path, nodes=nodes)
+    network_info = get_network_info(args.model_name, yaml_path=args.yaml_path, nodes=nodes, imgsize=args.imgsize)
     model_name = network_info.network.network_name
     logger.info(f"Start run for network {model_name} ...")
 
@@ -250,6 +277,18 @@ def compile(args):
     model_script = _extract_model_script_path(
         network_info.paths.alls_script, args.model_script_path, args.hw_arch, args.performance
     )
+
+    # Set optimization level and comrpression level as specified in arguments
+    if args.optimization_level is not None or args.compression_level is not None:
+        with open(model_script, 'r') as file:
+            contents = file.readlines()
+        contents = [line for line in contents if not line.startswith('model_optimization_flavor')]
+        line_to_add = f"model_optimization_flavor(optimization_level={args.optimization_level}, compression_level={args.compression_level})\n"
+        contents.append(line_to_add)
+        model_script = model_script.with_stem(model_script.stem + '_tmp')
+        with open(model_script , 'w') as file:
+            file.writelines(contents)
+
     _ensure_performance(model_name, model_script, args.performance, args.hw_arch, logger)
     compile_model(runner, network_info, args.results_dir, model_script, performance=args.performance)
 

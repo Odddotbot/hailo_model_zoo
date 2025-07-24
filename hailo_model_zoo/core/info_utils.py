@@ -23,7 +23,7 @@ def _load_cfg(cfg_file):
     return config
 
 
-def get_network_info(model_name, read_only=False, yaml_path=None, nodes=None):
+def get_network_info(model_name, read_only=False, yaml_path=None, nodes=None, imgsize=None):
     """
     Args:
         model_name: The network name to load.
@@ -40,6 +40,12 @@ def get_network_info(model_name, read_only=False, yaml_path=None, nodes=None):
     if not cfg_path.is_file():
         raise ValueError("cfg file is missing in {}".format(cfg_path))
     cfg = _load_cfg(cfg_path)
+
+    # Update input_shape with value provided in arguments 
+    if imgsize is not None:
+        cfg['preprocessing']['input_shape'] = [imgsize[0], imgsize[1], 3]
+        cfg['info']['input_shape'] = f"{imgsize[0]}x{imgsize[1]}x3"
+
     if nodes and nodes[0] != "":
         cfg.parser.nodes[0] = nodes[0]
     if nodes and nodes[1] != "":

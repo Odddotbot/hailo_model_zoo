@@ -101,6 +101,40 @@ def make_optimization_base():
     optimization_base_parser.add_argument(
         "--classes", type=int, metavar="", help="Number of classes for NMS configuration"
     )
+    optimization_base_parser.add_argument(
+        "--pt_filepath",
+        type=str,
+        help="(Odd.Bot) Path to PyTorch model."
+    )
+    optimization_base_parser.add_argument(
+        "--imgsize",
+        type=int,
+        nargs="+",
+        action=OneResizeValueAction,
+        help="(Odd.Bot) Set image size to given [h,w]",
+    )
+    optimization_base_parser.add_argument(
+        "--nms_scores_th",
+        type=float,
+        help="(Odd.Bot) Set output NMS confidence threshold to given value."
+    )
+    optimization_base_parser.add_argument(
+        "--nms_iou_th",
+        type=float,
+        help="(Odd.Bot) Set output NMS IOU threshold to given value."
+    )
+    optimization_base_parser.add_argument(
+        "--optimization_level",
+        type=int,
+        default=2,
+        help="(Odd.Bot) Set optimization level of Hailo model compiler. Higher levels cause longer runtimes but less degradation."
+    )
+    optimization_base_parser.add_argument(
+        "--compression_level",
+        type=int,
+        default=0,
+        help="(Odd.Bot) Set compression level of Hailo model compiler. Higher levels cause faster inference but more degradation."
+    )
     return optimization_base_parser
 
 

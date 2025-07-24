@@ -144,8 +144,8 @@ def parse_model(runner, network_info, *, ckpt_path=None, results_dir=Path("."), 
 
     _add_postprocess(runner, network_info)
 
-    # save model
-    runner.save_har(results_dir / f"{network_info.network.network_name}.har")
+    # Don't save intermediate model (save storage)
+    # runner.save_har(results_dir / f"{network_info.network.network_name}.har") # Odd.Bot (saves storage)
 
 
 def load_model(runner, har_path, logger):
@@ -304,6 +304,47 @@ def _handle_classes_argument(runner, logger, classes):
     runner.load_model_script("\n".join(script_commands))
 
 
+def _handle_oddbot_arguments(runner, logger, classes, imgsize, nms_iou_th, nms_scores_th):
+    """Edits the nms_postprocess json file to use user-provided arguments."""
+    script_commands = runner.model_script.split("\n")
+    nms_idx = ["nms_postprocess" in x for x in script_commands]
+    if not any(nms_idx):
+        logger.warning("Ignoring oddbot arguments since the model has no NMS post-process.")
+        return
+    
+    args_dict = {
+        "nms_scores_th": nms_scores_th,
+        "nms_iou_th": nms_iou_th,
+        "image_dims": [imgsize[0], imgsize[1]] if imgsize else None,
+        "classes": classes
+    }
+
+    nms_idx = nms_idx.index(True)
+    nms_command = script_commands[nms_idx]
+    nms_args = nms_command[:-1].split("(", 1)[-1].split(", ")
+    if ".json" in nms_command:
+        # Duplicate the config file, edit the classes and update the path in the command.
+        path_idx = [".json" in x for x in nms_args].index(True)
+        orig_path = nms_args[path_idx].split("=")[-1].replace('"', "").replace("'", "")
+        with open(orig_path, "r") as f:
+            nms_cfg = json.load(f)
+        for arg_name in args_dict:
+            arg_value = args_dict[arg_name]
+            if arg_value is not None:
+                nms_cfg[arg_name] = arg_value
+        tmp_path = f"{orig_path.split('.json')[0]}_tmp2.json"
+        with open(tmp_path, "w") as f:
+            json.dump(nms_cfg, f, indent=4)
+        nms_args.pop(path_idx)
+        arg_to_append = f'config_path="{tmp_path}"'
+        nms_args.append(arg_to_append)
+        script_commands[nms_idx] = f'nms_postprocess({", ".join(nms_args)})'
+        runner.load_model_script("\n".join(script_commands))
+    else:
+        logger.warning("Ignoring oddbot arguments, only works when nms .json is used.")
+        return
+    # End Odd.Bot custom code
+
 def prepare_calibration_data(runner, network_info, calib_path, logger, input_conversion_args=None, resize_args=None):
     logger.info("Preparing calibration data...")
     preproc_callback = make_preprocessing(runner, network_info, input_conversion_args, resize_args)
@@ -311,12 +352,14 @@ def prepare_calibration_data(runner, network_info, calib_path, logger, input_con
     return calib_feed_callback
 
 
-def optimize_full_precision_model(runner, calib_feed_callback, logger, model_script, resize, input_conversion, classes):
+def optimize_full_precision_model(runner, calib_feed_callback, logger, model_script, resize, input_conversion, classes, imgsize, nms_scores_th, nms_iou_th):
     runner.load_model_script(model_script)
     if runner.state != States.HAILO_MODEL:
         return
-    if classes is not None:
-        _handle_classes_argument(runner, logger, classes)
+    # if classes is not None:
+    #     _handle_classes_argument(runner, logger, classes)
+    # Handle user-provided arguments
+    _handle_oddbot_arguments(runner, logger, classes, imgsize, nms_iou_th, nms_scores_th)
     input_layers = runner.get_hn_model().get_input_layers()
     scope_name = input_layers[0].scope
     if resize is not None:
@@ -347,13 +390,16 @@ def optimize_model(
     resize=None,
     input_conversion=None,
     classes=None,
+    imgsize=None,
+    nms_scores_th=None,
+    nms_iou_th=None
 ):
-    optimize_full_precision_model(runner, calib_feed_callback, logger, model_script, resize, input_conversion, classes)
+    optimize_full_precision_model(runner, calib_feed_callback, logger, model_script, resize, input_conversion, classes, imgsize, nms_scores_th, nms_iou_th)
 
     runner.optimize(calib_feed_callback)
 
     model_name = network_info.network.network_name
-    runner.save_har(results_dir / f"{model_name}.har")
+    # runner.save_har(results_dir / f"{model_name}.har") # Don't save intermediate model to save storage
 
 
 def make_visualize_callback(network_info):
@@ -615,4 +661,4 @@ def compile_model(runner, network_info, results_dir, allocator_script_filename, 
     with open(get_hef_path(results_dir, model_name), "wb") as hef_out_file:
         hef_out_file.write(hef)
 
-    runner.save_har(results_dir / f"{model_name}.har")
+    # runner.save_har(results_dir / f"{model_name}.har") # Dont save intermediate model to save storage

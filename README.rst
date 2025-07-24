@@ -1,6 +1,23 @@
 Hailo Model Zoo
 ===============
 
+Adaptations for Odd.Bot
+-----------------------
+The hailomz compile program was adapted for converting YOLO .pt models to Hailo .hef files. 
+
+For this usecase, please call the ``hailomz compile`` program with the following arguments:
+
+* | ``--pt_filepath`` - path to trained YOLO .pt file, which will be converted to .onnx as intermediate step.
+* | ``--calib-path`` - path to a directory with your calibration images in JPEG/png format
+* | ``--yaml`` - path to configuration YAML file. Find the one matching your YOLO architecture in 'hailo_model_zoo/cfg/networks'.
+* | ``--classes`` - number of classes to predict
+* | ``--imgsize`` - image size that the model is trained on. Can be a tuple or single value.
+* | ``--nms_scores_th`` - score threshold to use during NMS. 
+* | ``--nms_iou_th`` - IOU threshold to use during NMS. This should be the same as used during training to ensure identical results.
+* | ``--compression_level`` - degree of compression. Only increase this if inference is too low (results in degradation).
+* | ``--optimization_level`` - degree of optimization. Higher levels will cause longer runtimes but less degradation.
+
+
 .. |python| image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue.svg
    :target: https://www.python.org/downloads/release/python-380/
    :alt: Python 3.8
