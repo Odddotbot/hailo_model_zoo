@@ -395,9 +395,11 @@ def optimize_model(
 ):
     optimize_full_precision_model(runner, calib_feed_callback, logger, model_script, resize, input_conversion, classes, imgsize, nms_scores_th, nms_iou_th)
 
+    runner.save_har(results_dir / f"{model_name}_fp_optimized.har")
+
     runner.optimize(calib_feed_callback)
 
-    runner.save_har(results_dir / f"{model_name}_fp_optimized.har")
+    runner.save_har(results_dir / f"{model_name}_quantized.har")
 
 
 def make_visualize_callback(network_info):
@@ -659,4 +661,4 @@ def compile_model(runner, network_info, results_dir, allocator_script_filename, 
     with open(get_hef_path(results_dir, model_name), "wb") as hef_out_file:
         hef_out_file.write(hef)
 
-    # runner.save_har(results_dir / f"{model_name}.har") # Dont save intermediate model to save storage
+    runner.save_har(results_dir / f"{model_name}_compiled.har")
