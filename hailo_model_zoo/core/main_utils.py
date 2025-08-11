@@ -101,7 +101,7 @@ def parse_model(runner, network_info, model_name, *, ckpt_path=None, results_dir
     start_node_names, end_node_names = network_info.parser.nodes[0:2]
 
     parser_args = argparse.Namespace(
-        net_name=model_name,
+        net_name=network_info.network.network_name,
         input_framework=str(ckpt_path).split(".")[-1],
         input_format=None,
         model_path=str(ckpt_path),
