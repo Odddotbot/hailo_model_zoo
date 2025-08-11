@@ -140,6 +140,12 @@ def make_optimization_base():
         type=str,
         help="(Odd.Bot) Set output name of the model."
     )
+    optimization_base_parser.add_argument(
+        "--results_dir",
+        default="./",
+        type=lambda string: Path(string),
+        help="(Odd.Bot) Results directory, where to save the output to."
+    )
     return optimization_base_parser
 
 
