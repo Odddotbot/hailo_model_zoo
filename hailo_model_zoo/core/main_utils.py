@@ -88,7 +88,7 @@ def download_model(network_info, logger):
     return ckpt_path
 
 
-def parse_model(runner, network_info, *, ckpt_path=None, results_dir=Path("."), logger=None):
+def parse_model(runner, network_info, model_name, *, ckpt_path=None, results_dir=Path("."), logger=None):
     """Parses TF or ONNX model and saves as <results_dir>/<model_name>.(hn|npz)"""
     start_node_shapes = network_info.parser.start_node_shapes
     if isinstance(start_node_shapes, ListConfig):
@@ -98,7 +98,6 @@ def parse_model(runner, network_info, *, ckpt_path=None, results_dir=Path("."), 
     if ckpt_path is None:
         ckpt_path = download_model(network_info, logger)
 
-    model_name = network_info.network.network_name
     start_node_names, end_node_names = network_info.parser.nodes[0:2]
 
     parser_args = argparse.Namespace(
@@ -144,8 +143,7 @@ def parse_model(runner, network_info, *, ckpt_path=None, results_dir=Path("."), 
 
     _add_postprocess(runner, network_info)
 
-    # Don't save intermediate model (save storage)
-    # runner.save_har(results_dir / f"{network_info.network.network_name}.har") # Odd.Bot (saves storage)
+    runner.save_har(results_dir / f"{model_name}_parsed.har")
 
 
 def load_model(runner, har_path, logger):
@@ -381,6 +379,7 @@ def optimize_full_precision_model(runner, calib_feed_callback, logger, model_scr
 
 
 def optimize_model(
+    model_name,
     runner,
     calib_feed_callback,
     logger,
@@ -398,8 +397,7 @@ def optimize_model(
 
     runner.optimize(calib_feed_callback)
 
-    model_name = network_info.network.network_name
-    # runner.save_har(results_dir / f"{model_name}.har") # Don't save intermediate model to save storage
+    runner.save_har(results_dir / f"{model_name}_fp_optimized.har")
 
 
 def make_visualize_callback(network_info):
@@ -646,8 +644,8 @@ def get_hef_path(results_dir, model_name):
     return results_dir.joinpath(f"{model_name}.hef")
 
 
-def compile_model(runner, network_info, results_dir, allocator_script_filename, performance=False):
-    model_name = network_info.network.network_name
+def compile_model(runner, network_info, results_dir, allocator_script_filename, performance=False, output_name=None):
+    model_name = output_name if output_name else network_info.network.network_name
     model_script_parent = None
     if allocator_script_filename is not None:
         allocator_script_filename = Path(allocator_script_filename)

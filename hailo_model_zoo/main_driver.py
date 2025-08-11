@@ -101,7 +101,9 @@ def _ensure_optimized(runner, logger, args, network_info):
     calib_feed_callback = prepare_calibration_data(
         runner, network_info, args.calib_path, logger, args.input_conversion, args.resize
     )
+    model_name = args.output_name if args.output_name else network_info.network.network_name
     optimize_model(
+        model_name,
         runner,
         calib_feed_callback,
         logger,
@@ -129,7 +131,8 @@ def _ensure_parsed(runner, logger, network_info, args):
     else:
         ckpt_path = args.ckpt_path
 
-    parse_model(runner, network_info, ckpt_path=ckpt_path, results_dir=args.results_dir, logger=logger)
+    model_name = args.output_name if args.output_name else network_info.network.network_name
+    parse_model(runner, network_info, model_name, ckpt_path=ckpt_path, results_dir=args.results_dir, logger=logger)
 
 
 def configure_hef_tf1(hef_path, target):
@@ -290,9 +293,10 @@ def compile(args):
             file.writelines(contents)
 
     _ensure_performance(model_name, model_script, args.performance, args.hw_arch, logger)
-    compile_model(runner, network_info, args.results_dir, model_script, performance=args.performance)
+    compile_model(runner, network_info, args.results_dir, model_script, performance=args.performance, output_name=args.output_name)
 
-    logger.info(f"HEF file written to {get_hef_path(args.results_dir, network_info.network.network_name)}")
+    model_name = args.output_name if args.output_name else network_info.network.network_name
+    logger.info(f"HEF file written to {get_hef_path(args.results_dir, model_name)}")
 
 
 def profile(args):

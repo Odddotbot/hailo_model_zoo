@@ -135,6 +135,11 @@ def make_optimization_base():
         default=0,
         help="(Odd.Bot) Set compression level of Hailo model compiler. Higher levels cause faster inference but more degradation."
     )
+    optimization_base_parser.add_argument(
+        "--output_name",
+        type=str,
+        help="(Odd.Bot) Set output name of the model."
+    )
     return optimization_base_parser
 
 
