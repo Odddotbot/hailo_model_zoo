@@ -56,14 +56,14 @@ results = process_raw_hailo_results(raw_results)
 pickle_and_save_results('predictions.unoptimized_har.pk', results)
 
 # Evaluate FP-optimized HAR
-runner = ClientRunner(har=f'{model_dir.__str__()}/{model_name}_fp_optimized.har')
+runner = ClientRunner(har=f'{model_dir.__str__()}/{model_name}.har')
 with runner.infer_context(InferenceContext.SDK_FP_OPTIMIZED) as ctx:
     raw_results = runner.infer(ctx, imgs_array)
 results = process_raw_hailo_results(raw_results)
 pickle_and_save_results('predictions.fp_optimized_har.pk', results)
 
 # Evaluate Quantized HAR
-runner = ClientRunner(har=f'{model_dir.__str__()}/{model_name}_quantized.har')
+runner = ClientRunner(har=f'{model_dir.__str__()}/{model_name}.har')
 with runner.infer_context(InferenceContext.SDK_QUANTIZED) as ctx:
     raw_results = runner.infer(ctx, imgs_array)
 results = process_raw_hailo_results(raw_results)
