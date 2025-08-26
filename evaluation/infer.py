@@ -14,6 +14,8 @@ val_dir = Path('/datasets/hailo_calibration/val/images')
 model_dir = Path('/experiments/ca_2025_06_26/train/ca_20250626_all_XL/weights')
 model_name = 'opt1' # 'opt2', 'opt3
 results_dir = Path('results')
+model_conf = 0.4
+model_iou = 0.5
 
 
 # CONSTANTS
@@ -56,12 +58,12 @@ model = ultralytics.models.yolo.model.YOLO(pt_filepath).to('cpu')
 # model.model.model[22].cv3[1][2].register_forward_hook(get_layer_output('/model.22/cv3.1/cv3.1.2/Conv'))
 # model.model.model[22].cv2[2][2].register_forward_hook(get_layer_output('/model.22/cv2.2/cv2.2.2/Conv'))
 # model.model.model[22].cv3[2][2].register_forward_hook(get_layer_output('/model.22/cv3.2/cv3.2.2/Conv'))
-results = [result.boxes.data for result in model.predict(imgs_list)]
+results = [result.boxes.data for result in model.predict(imgs_list, conf=model_conf, iou=model_iou)]
 pickle_and_save_results(f'{model_name}.pt.pk', results)
 
 # Evaluate ONNX
 model = ultralytics.models.yolo.model.YOLO(onnx_filepath, task='detect')
-results = [model.predict(img)[0].boxes.data for img in imgs_list]
+results = [model.predict(img, conf=model_conf, iou=model_iou)[0].boxes.data for img in imgs_list]
 pickle_and_save_results(f'{model_name}.onnx.pk', results)
 
 # Evaluate parsed HAR
