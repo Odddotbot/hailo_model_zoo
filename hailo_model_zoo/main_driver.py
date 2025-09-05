@@ -1,5 +1,12 @@
 from pathlib import Path
 
+# FOR validation stuff
+import os
+import yaml
+import cv2
+import numpy as np
+import ultralytics
+
 try:
     from hailo_platform import HEF, PcieDevice
 
@@ -458,6 +465,57 @@ def evaluate(args):
             resize_args=args.resize,
             show_results_per_class=args.show_results_per_class,
         )
+    
+
+def load_validation_data(data_yaml: str, imgsize: int):
+    with open(data_yaml) as data_yaml_file:
+        data_config = yaml.safe_load(data_yaml_file) # NOTE: this actually has the number/names/order of classes
+    val_data_dirs = data_config['val']
+    val_data_dirs = [f"/datasets/{dir.split('/datasets/')[1]}" for dir in val_data_dirs] # only /datasets is mounted in Docker
+    img_paths = [f'{dir}/images/val/{image_path}' for dir in val_data_dirs for image_path in sorted(os.listdir(f'{dir}/images/val'))]
+    img_list = [cv2.imread(img_path) for img_path in img_paths]
+    img_list = [cv2.resize(img, imgsize) for img in img_list]
+    return img_list
+
+
+def infer_ultralytics(pt_filepath: str, img_list: list[np.ndarray], conf: float, iou: float):
+    model = ultralytics.models.yolo.model.YOLO(pt_filepath)
+    results = model.predict(img_list, conf=conf, iou=iou)
+    results = [result.boxes.data for result in results]
+    return results
+
+
+def infer_hailo(har_filepath: str, img_list: list[np.ndarray], inference_context: InferenceContext):
+    imgs_array = np.stack(img_list)[:,:,:,[2,1,0]] # Switch BGR to RGB for Hailo
+    runner = ClientRunner(har=har_filepath)
+    with runner.infer_context(inference_context) as ctx:
+        raw_results = runner.infer(ctx, imgs_array)
+    results = []
+    for result in raw_results:
+        weed_result = result[0].transpose()
+        crop_result = result[1].transpose()
+        weed_result = weed_result[weed_result.sum(axis=1) != 0]
+        crop_result = crop_result[crop_result.sum(axis=1) != 0]
+        results.append([weed_result, crop_result])
+    return results
+
+
+def validate(args):
+    
+    # Loading validation data
+    img_list = load_validation_data(args.data_yaml, args.imgsize)
+    pt_results = infer_ultralytics(args.pt_filepath, img_list, args.nms_scores_th, args.nms_iou_th)
+    # TODO: check that iou and scores th of hailo model corresponds to what is provided in args!
+    # Or maybe we extract these from the model and put those into the `infer_ultralytics` function
+    fp_optimized_results = infer_hailo(args.har_filepath, img_list, InferenceContext.SDK_FP_OPTIMIZED)
+    quantized_results = infer_hailo(args.har_filepath, img_list, InferenceContext.SDK_QUANTIZED)
+    print(quantized_results)
+    # TODO: What about the performance on hailo hardware? Is SDK Quantized good enough, or... ?
+    
+    # TODO: LEFT OFF HERE
+    # Might wanna put everything in a different Python module
+    
+    # Evaluate the prediction
 
 
 def __get_batch_size(network_info, target):

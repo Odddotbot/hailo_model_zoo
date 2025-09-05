@@ -10,6 +10,8 @@ from hailo_model_zoo.base_parsers import (
     make_optimization_base,
     make_parsing_base,
     make_profiling_base,
+    make_oddbot_base,
+    make_validation_base,
 )
 from hailo_model_zoo.utils.cli_utils import HMZ_COMMANDS
 from hailo_model_zoo.utils.plugin_utils import iter_namespace
@@ -27,6 +29,8 @@ def _create_args_parser():
     hef_base_parser = make_hef_base()
     profile_base_parser = make_profiling_base()
     evaluation_base_parser = make_evaluation_base()
+    oddbot_base_parser = make_oddbot_base()
+    validation_base_parser = make_validation_base()
     version = get_version("hailo_model_zoo")
 
     # --- create per action subparser
@@ -54,7 +58,11 @@ def _create_args_parser():
     )
     subparsers.add_parser(
         "compile",
-        parents=[parsing_base_parser, optimization_base_parser],
+        parents=[
+            parsing_base_parser, 
+            optimization_base_parser,
+            oddbot_base_parser,
+        ],
         help=compile_help,
     )
 
@@ -84,6 +92,15 @@ def _create_args_parser():
         help="infer the model using the Hailo Emulator or the Hailo hardware and produce the model accuracy.",
     )
 
+    subparsers.add_parser(
+        "validate",
+        parents=[
+            validation_base_parser,
+            oddbot_base_parser,
+        ],
+        help="(Odd.Bot) Validate the performance of a compiled Hailo model against the original PyTorch model.",
+    )
+
     # add parsers for plugins
     for command in HMZ_COMMANDS:
         command_parser = command.parser_fn()
@@ -98,7 +115,7 @@ def run(args):
         return command_to_handler[args.command](args)
 
     # we make sure to only import these now to keep loading & plugins fast
-    from hailo_model_zoo.main_driver import compile, evaluate, optimize, parse, profile
+    from hailo_model_zoo.main_driver import compile, evaluate, optimize, parse, profile, validate
 
     handlers = {
         "parse": parse,
@@ -106,6 +123,8 @@ def run(args):
         "compile": compile,
         "profile": profile,
         "eval": evaluate,
+        "validate": validate, 
+        # "compile_and_validate": compile_and_validate (TODO, note that this should also delete the .har file)
     }
 
     return handlers[args.command](args)

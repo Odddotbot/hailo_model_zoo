@@ -102,28 +102,6 @@ def make_optimization_base():
         "--classes", type=int, metavar="", help="Number of classes for NMS configuration"
     )
     optimization_base_parser.add_argument(
-        "--pt_filepath",
-        type=str,
-        help="(Odd.Bot) Path to PyTorch model."
-    )
-    optimization_base_parser.add_argument(
-        "--imgsize",
-        type=int,
-        nargs="+",
-        action=OneResizeValueAction,
-        help="(Odd.Bot) Set image size to given [h,w]",
-    )
-    optimization_base_parser.add_argument(
-        "--nms_scores_th",
-        type=float,
-        help="(Odd.Bot) Set output NMS confidence threshold to given value."
-    )
-    optimization_base_parser.add_argument(
-        "--nms_iou_th",
-        type=float,
-        help="(Odd.Bot) Set output NMS IOU threshold to given value."
-    )
-    optimization_base_parser.add_argument(
         "--optimization_level",
         type=int,
         default=2,
@@ -228,3 +206,50 @@ def make_evaluation_base():
         use_service=False,
     )
     return evaluation_base_parser
+
+
+def make_oddbot_base():
+    oddbot_base_parser = argparse.ArgumentParser(add_help=False)
+
+    oddbot_base_parser.add_argument(
+        "--pt_filepath",
+        type=str,
+        help="(Odd.Bot) Path to PyTorch model."
+    )
+    oddbot_base_parser.add_argument(
+        "--imgsize",
+        type=int,
+        nargs="+",
+        action=OneResizeValueAction,
+        help="(Odd.Bot) Set image size to given [h,w]",
+    )
+    oddbot_base_parser.add_argument(
+        "--nms_scores_th",
+        type=float,
+        help="(Odd.Bot) Set output NMS confidence threshold to given value."
+    )
+    oddbot_base_parser.add_argument(
+        "--nms_iou_th",
+        type=float,
+        help="(Odd.Bot) Set output NMS IOU threshold to given value."
+    )
+
+    return oddbot_base_parser
+
+
+def make_validation_base():
+    validation_base_parser = argparse.ArgumentParser(add_help=False)
+
+    validation_base_parser.add_argument(
+        "--har_filepath",
+        type=str,
+        help="(Odd.Bot) Path to Hailo archive (.har)."
+    )
+
+    validation_base_parser.add_argument(
+        "--data_yaml",
+        type=str,
+        help="(Odd.Bot) Path to .yaml file describing data used for validation (ignoring training data)."
+    )
+
+    return validation_base_parser
