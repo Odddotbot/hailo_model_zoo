@@ -252,4 +252,25 @@ def make_validation_base():
         help="(Odd.Bot) Path to .yaml file describing data used for validation (ignoring training data)."
     )
 
+    validation_base_parser.add_argument(
+        "--similarity_th",
+        type=float,
+        default=0.95,
+        help="(Odd.Bot) Tolerated degradation w.r.t. the original PyTorch model."
+    )
+
+    validation_base_parser.add_argument(
+        '--val_iou_th',
+        type=float,
+        default=0.65,
+        help='(Odd.Bot) The IOU threshold used to determine whether a prediction at certain conversion stage is the same as the PyTorch one. Higher is stricter.'
+    )
+
+    validation_base_parser.add_argument(
+        '--vis_error_th',
+        type=float,
+        default=None,
+        help='(Odd.Bot) If specified, will save images/predictions with more than this number of mistakes.'
+    )
+
     return validation_base_parser
