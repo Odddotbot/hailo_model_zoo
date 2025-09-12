@@ -16,25 +16,30 @@ import torch
 
 
 CLASSES = ['weed', 'crop']
-SIMILARITY_METRICS = ['matched', 'mismatched', 'missed', 'added', 'accuracy']
+SIMILARITY_METRICS = ['matched', 'class confused', 'missed', 'novel', 'accuracy']
 
 
-def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, imgsize: int, nms_scores_th: float, nms_iou_th: float, similarity_th: float, vis_error_th: float, val_iou_th: float, results_dir: str):
+def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, imgsize: tuple[int], ground_truth_src: str, nms_scores_th: float, nms_iou_th: float, similarity_th: float, vis_error_th: float, val_iou_th: float, results_dir: str):
     # TODO: Not sure if all the variable names are like super duper interintuitive
 
     # Loading validation data
     img_list = load_validation_data(data_yaml, imgsize)
 
-    pt_results = infer_ultralytics(pt_filepath, img_list, nms_scores_th, nms_iou_th)
+    if ground_truth_src == 'sly':
+        ground_truth = get_labels(data_yaml, imgsize)
+    else: # ground_truth_src == 'pt'
+        ground_truth = infer_ultralytics(pt_filepath, img_list, nms_scores_th, nms_iou_th)
+    
     onnx_filepath = pt_filepath.replace('.pt', '.onnx')
     conversion_results = {
+        'PyTorch': infer_ultralytics(pt_filepath, img_list, nms_scores_th, nms_iou_th),
         'ONNX': infer_ultralytics(onnx_filepath, img_list, nms_scores_th, nms_iou_th),
-        'FP optimized': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, InferenceContext.SDK_FP_OPTIMIZED),
-        'Quantized': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, InferenceContext.SDK_QUANTIZED),
-        'Hardware (emulated)': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, InferenceContext.SDK_BIT_EXACT)
+        'FP optimized': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_FP_OPTIMIZED),
+        'Quantized': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_QUANTIZED),
+        'Hardware (emulated)': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_BIT_EXACT)
     }
 
-    similarity_data = calculate_prediction_similarity(pt_results, conversion_results, val_iou_th, vis_error_th, img_list, results_dir)
+    similarity_data = calculate_prediction_similarity(ground_truth, conversion_results, val_iou_th, vis_error_th, img_list, results_dir)
     plot_results(similarity_data, conversion_results.keys(), results_dir)
     for i, stage in enumerate(conversion_results):
         similarity = similarity_data[i,-1] / 100
@@ -42,18 +47,42 @@ def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, i
             print(f"FAILED conversion validation at '{stage}' stage, similarity to .pt model ({np.round(similarity, 4)}) below threshold ({similarity_th}).")
             return
         
-    print(f"SUCCESS in conversion validation.")
+    print(f"SUCCESS in conversion validation (similarity={np.round(similarity, 4)}).")
 
 
 def load_validation_data(data_yaml: str, imgsize: int) -> np.ndarray:
     with open(data_yaml) as data_yaml_file:
-        data_config = yaml.safe_load(data_yaml_file) # NOTE: this actually has the number/names/order of classes
+        data_config = yaml.safe_load(data_yaml_file) # TODO: this actually has the number/names/order of classes
     val_data_dirs = data_config['val']
     val_data_dirs = [f"/datasets/{dir.split('/datasets/')[1]}" for dir in val_data_dirs] # only /datasets is mounted in Docker
+    # img_paths = [f'{dir}/images/train/{image_path}' for dir in val_data_dirs for image_path in sorted(os.listdir(f'{dir}/images/train'))] # TODO remove this line (was for Germany testing)
     img_paths = [f'{dir}/images/val/{image_path}' for dir in val_data_dirs for image_path in sorted(os.listdir(f'{dir}/images/val'))]
     img_list = [cv2.imread(img_path) for img_path in img_paths]
     img_list = [cv2.resize(img, imgsize) for img in img_list]
     return img_list
+
+
+def get_labels(data_yaml: str, imgsize: tuple[int]):
+    with open(data_yaml) as data_yaml_file:
+        data_config = yaml.safe_load(data_yaml_file)
+    val_data_dirs = data_config['val']
+    val_data_dirs = [f"/datasets/{dir.split('/datasets/')[1]}" for dir in val_data_dirs]
+    label_paths = [f'{dir}/labels/val/{image_path}' for dir in val_data_dirs for image_path in sorted(os.listdir(f'{dir}/labels/val'))]
+    label_list = []
+    for label_path in label_paths:
+        labels = np.loadtxt(label_path)
+        confidence_placeholder = np.ones(len(labels))
+        labels = np.column_stack((labels, confidence_placeholder))
+        labels = labels[:,[1,2,3,4,5,0]]
+        labels[:,[0,2]] = imgsize[0]*labels[:,[0,2]]
+        labels[:,[1,3]] = imgsize[1]*labels[:,[1,3]]
+        labels[:,0] = labels[:,0] - 0.5*labels[:,2] # xmin
+        labels[:,2] = labels[:,0] + labels[:,2] # xmax
+        labels[:,1] = labels[:,1] - 0.5*labels[:,3] # ymin
+        labels[:,3] = labels[:,1] + labels[:,3] # ymax
+        labels = torch.tensor(labels)
+        label_list.append(labels)
+    return label_list
 
 
 def format_hailo_prediction(raw_result: list[np.ndarray], class_idx: int) -> np.ndarray:
@@ -70,10 +99,10 @@ def infer_ultralytics(pt_or_onnx_filepath: str, img_list: list[np.ndarray], conf
     return results
 
 
-def infer_hailo(har_filepath: str, img_list: list[np.ndarray], conf: float, iou: float, inference_context: InferenceContext) -> list[torch.Tensor]:
+def infer_hailo(har_filepath: str, img_list: list[np.ndarray], conf: float, iou: float, imgsize: tuple[int], inference_context: InferenceContext) -> list[torch.Tensor]:
     
     imgs_array = np.stack(img_list)[:,:,:,[2,1,0]] # Switch BGR to RGB for Hailo
-    img_width, img_height = imgs_array.shape[2], imgs_array.shape[1]
+    img_width, img_height = imgsize
     runner = ClientRunner(har=har_filepath, hw_arch='hailo8')
     runner._sdk_backend.nms_metadata.nms_config.nms_scores_th = conf
     runner._sdk_backend.nms_metadata.nms_config.nms_iou_th = iou
@@ -154,20 +183,20 @@ def calculate_prediction_similarity(true_results: list[torch.Tensor], stage_resu
         matches = confusion_matrix[0,0] + confusion_matrix[1,1]
         mismatches = confusion_matrix[1,0] + confusion_matrix[0,1]
         missed = confusion_matrix[2].sum()
-        added = confusion_matrix[:,2].sum()
+        novel = confusion_matrix[:,2].sum()
         accuracy = np.round((matches / confusion_matrix.sum())*100, 2)
-        similarity_data[i] = (0, matches, mismatches, missed, added, accuracy)
+        similarity_data[i] = (0, matches, mismatches, missed, novel, accuracy)
     return similarity_data
 
 
 def plot_results(similarity_data, conversion_stages, results_dir):
     for i in range(1, similarity_data.shape[1]-1):
-        bottom = bottom=similarity_data[:,:i-1].sum(axis=1)
+        bottom = similarity_data[:,:i].sum(axis=1)
         plt.bar(range(similarity_data.shape[0]), similarity_data[:,i], bottom=bottom, width=0.8, label=SIMILARITY_METRICS[i-1])
     xtick_labels = [f'{stage}\n{similarity_data[i,-1]}%' for i, stage in enumerate(conversion_stages)]
     plt.xticks(range(len(xtick_labels)), labels=xtick_labels)
     plt.xlabel('conversion stage')
     plt.ylabel('predictions w.r.t. PyTorch model')
-    plt.legend()
+    plt.legend(title='predictions')
     plt.tight_layout()
     plt.savefig(f'{results_dir}/degradation.png')

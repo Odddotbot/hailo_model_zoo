@@ -253,6 +253,13 @@ def make_validation_base():
     )
 
     validation_base_parser.add_argument(
+        "--ground_truth_src",
+        default="pt",
+        choices=["pt", "sly"],
+        help="(Odd.Bot) Whether to use the PyTorch predictions (pt) or Supervisely (sly) annotations as ground truth for comparing Hailo against."
+    )
+
+    validation_base_parser.add_argument(
         "--similarity_th",
         type=float,
         default=0.95,

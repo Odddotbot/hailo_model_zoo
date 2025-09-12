@@ -465,7 +465,7 @@ def validate(args):
     results_dir = 'conversion' # TODO remove this line
     Path(results_dir).mkdir(exist_ok=True)
 
-    conversion_validation(args.pt_filepath, args.har_filepath, args.data_yaml, args.imgsize, args.nms_scores_th, args.nms_iou_th, args.similarity_th, args.vis_error_th, args.val_iou_th, results_dir)
+    conversion_validation(args.pt_filepath, args.har_filepath, args.data_yaml, args.imgsize, args.ground_truth_src, args.nms_scores_th, args.nms_iou_th, args.similarity_th, args.vis_error_th, args.val_iou_th, results_dir)
 
     # TODO: deleting the .har and .onnx files if conversion was succesfull?
 
