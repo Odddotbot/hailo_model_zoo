@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import importlib
+import yaml
 
 # we try to minimize imports to make 'main.py --help' responsive. So we only import definitions.
 import hailo_model_zoo.plugin
@@ -59,9 +60,9 @@ def _create_args_parser():
     subparsers.add_parser(
         "compile",
         parents=[
+            oddbot_base_parser,
             parsing_base_parser, 
             optimization_base_parser,
-            oddbot_base_parser,
         ],
         help=compile_help,
     )
@@ -95,8 +96,9 @@ def _create_args_parser():
     subparsers.add_parser(
         "validate",
         parents=[
-            validation_base_parser,
             oddbot_base_parser,
+            validation_base_parser,
+            parsing_base_parser,
         ],
         help="(Odd.Bot) Validate the performance of a compiled Hailo model against the original PyTorch model.",
     )
@@ -106,6 +108,42 @@ def _create_args_parser():
         command_parser = command.parser_fn()
         subparsers.add_parser(command.name, parents=[command_parser], help=command_parser.description)
     return parser
+
+
+def _process_config_file(args, command='compile_and_validate'):
+
+    with open(args.config, 'r') as config_file:
+        config = yaml.safe_load(config_file)
+
+    if args.pt_filepath is None:
+        args.pt_filepath = f'{config["input"]["folder_of_training_run"]}/weights/{config["base"]["model_filename"]}'
+    args.results_dir = args.pt_filepath.split("/weights")[0] if args.results_dir is None else args.results_dir
+
+    imgsize = config["base"]["imgsize"]
+    imgsize = (imgsize, imgsize) if type(imgsize)==int else imgsize
+
+    args.imgsize = imgsize if args.imgsize is None else args.imgsize
+    args.classes = config["base"]["classes"] if args.classes is None else args.classes
+    args.nms_scores_th = config["base"]["nms_scores_th"] if args.nms_scores_th is None else args.nms_scores_th
+    args.nms_iou_th = config["base"]["nms_iou_th"] if args.nms_iou_th is None else args.nms_iou_th
+    args.hw_arch = config["base"]["hw_arch"] if args.hw_arch is None else args.hw_arch
+
+    if command.startswith('compile'):
+        args.yaml_path = config["base"]["hailo_arch_yaml"] if args.yaml_path is None else args.yaml_path
+        args.output_name = args.results_dir.split('/')[-1] if args.output_name is None else args.output_name
+        args.calib_path = config["compile"]["calib_path"] if args.calib_path is None else args.calib_path
+        args.optimization_level = config["compile"]["optimization_level"] if args.optimization_level is None else args.optimization_level
+        args.compression_level = config["compile"]["compression_level"] if args.compression_level is None else args.compression_level
+
+    if command.endswith('validate'):        
+        args.har_filepath = config["validate"]["har_filepath"] if args.har_filepath is None else args.har_filepath
+        args.data_yaml = config["validate"]["data_yaml"] if args.data_yaml is None else args.data_yaml
+        args.ground_truth_src = config["validate"]["ground_truth_src"] if args.ground_truth_src is None else args.ground_truth_src
+        args.similarity_th = config["validate"]["similarity_th"] if args.similarity_th is None else args.similarity_th
+        args.val_iou_th = config["validate"]["val_iou_th"] if args.val_iou_th is None else args.val_iou_th
+        args.vis_error_th = config["validate"]["vis_error_th"] if args.vis_error_th is None else args.vis_error_th
+        
+    return args
 
 
 def run(args):
@@ -127,6 +165,7 @@ def run(args):
         # "compile_and_validate": compile_and_validate (TODO, note that this should also delete the .har file)
     }
 
+    args = _process_config_file(args, command=args.command)
     return handlers[args.command](args)
 
 

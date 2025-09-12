@@ -19,7 +19,7 @@ CLASSES = ['weed', 'crop']
 SIMILARITY_METRICS = ['matched', 'class confused', 'missed', 'novel', 'accuracy']
 
 
-def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, imgsize: tuple[int], ground_truth_src: str, nms_scores_th: float, nms_iou_th: float, similarity_th: float, vis_error_th: float, val_iou_th: float, results_dir: str):
+def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, imgsize: tuple[int], ground_truth_src: str, hw_arch: str, nms_scores_th: float, nms_iou_th: float, similarity_th: float, vis_error_th: float, val_iou_th: float, results_dir: str):
     # TODO: Not sure if all the variable names are like super duper interintuitive
 
     # Loading validation data
@@ -34,9 +34,9 @@ def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, i
     conversion_results = {
         'PyTorch': infer_ultralytics(pt_filepath, img_list, nms_scores_th, nms_iou_th),
         'ONNX': infer_ultralytics(onnx_filepath, img_list, nms_scores_th, nms_iou_th),
-        'FP optimized': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_FP_OPTIMIZED),
-        'Quantized': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_QUANTIZED),
-        'Hardware (emulated)': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_BIT_EXACT)
+        'FP optimized': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_FP_OPTIMIZED, hw_arch),
+        'Quantized': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_QUANTIZED, hw_arch),
+        'Hardware (emulated)': infer_hailo(har_filepath, img_list, nms_scores_th, nms_iou_th, imgsize, InferenceContext.SDK_BIT_EXACT, hw_arch)
     }
 
     similarity_data = calculate_prediction_similarity(ground_truth, conversion_results, val_iou_th, vis_error_th, img_list, results_dir)
@@ -99,11 +99,11 @@ def infer_ultralytics(pt_or_onnx_filepath: str, img_list: list[np.ndarray], conf
     return results
 
 
-def infer_hailo(har_filepath: str, img_list: list[np.ndarray], conf: float, iou: float, imgsize: tuple[int], inference_context: InferenceContext) -> list[torch.Tensor]:
+def infer_hailo(har_filepath: str, img_list: list[np.ndarray], conf: float, iou: float, imgsize: tuple[int], inference_context: InferenceContext, hw_arch: str) -> list[torch.Tensor]:
     
     imgs_array = np.stack(img_list)[:,:,:,[2,1,0]] # Switch BGR to RGB for Hailo
     img_width, img_height = imgsize
-    runner = ClientRunner(har=har_filepath, hw_arch='hailo8')
+    runner = ClientRunner(har=har_filepath, hw_arch=hw_arch)
     runner._sdk_backend.nms_metadata.nms_config.nms_scores_th = conf
     runner._sdk_backend.nms_metadata.nms_config.nms_iou_th = iou
 

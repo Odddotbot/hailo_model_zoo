@@ -18,6 +18,16 @@ def make_parsing_base():
     parsing_base_parser = argparse.ArgumentParser(add_help=False)
     config_group = parsing_base_parser.add_mutually_exclusive_group()
     add_model_name_arg(config_group, optional=True)
+    parsing_base_parser.add_argument(
+        "--hw-arch",
+        type=str,
+        metavar="",
+        choices=["hailo8", "hailo8l", "hailo15h", "hailo15m", "hailo15l", "hailo10h", "hailo10h2", "mars"],
+        help="Which hw arch to run: hailo8 / hailo8l/ hailo15h/ hailo15m / hailo10h. By default using hailo8.",
+    )
+    parsing_base_parser.add_argument(
+        "--classes", type=int, metavar="", help="Number of classes for NMS configuration"
+    )
     config_group.add_argument(
         "--yaml",
         type=str,
@@ -32,14 +42,6 @@ def make_parsing_base():
         dest="ckpt_path",
         help=("Path to onnx or ckpt to use for parsing." " By default using the model cache location"),
     ).complete = CKPT_COMPLETE
-    parsing_base_parser.add_argument(
-        "--hw-arch",
-        type=str,
-        default="hailo8",
-        metavar="",
-        choices=["hailo8", "hailo8l", "hailo15h", "hailo15m", "hailo15l", "hailo10h", "hailo10h2", "mars"],
-        help="Which hw arch to run: hailo8 / hailo8l/ hailo15h/ hailo15m / hailo10h. By default using hailo8.",
-    )
     parsing_base_parser.add_argument(
         "--start-node-names",
         type=str,
@@ -99,30 +101,19 @@ def make_optimization_base():
         help="Add input conversion from given type",
     )
     optimization_base_parser.add_argument(
-        "--classes", type=int, metavar="", help="Number of classes for NMS configuration"
-    )
-    optimization_base_parser.add_argument(
         "--optimization_level",
         type=int,
-        default=2,
         help="(Odd.Bot) Set optimization level of Hailo model compiler. Higher levels cause longer runtimes but less degradation."
     )
     optimization_base_parser.add_argument(
         "--compression_level",
         type=int,
-        default=0,
         help="(Odd.Bot) Set compression level of Hailo model compiler. Higher levels cause faster inference but more degradation."
     )
     optimization_base_parser.add_argument(
         "--output_name",
         type=str,
         help="(Odd.Bot) Set output name of the model."
-    )
-    optimization_base_parser.add_argument(
-        "--results_dir",
-        default="./",
-        type=lambda string: Path(string),
-        help="(Odd.Bot) Results directory, where to save the output to."
     )
     return optimization_base_parser
 
@@ -212,6 +203,11 @@ def make_oddbot_base():
     oddbot_base_parser = argparse.ArgumentParser(add_help=False)
 
     oddbot_base_parser.add_argument(
+        "--config",
+        type=str,
+        help="(Odd.Bot) Path to .yaml file with settings to use for conversion/validation. Settings can be overridden by other arguments.",
+    )
+    oddbot_base_parser.add_argument(
         "--pt_filepath",
         type=str,
         help="(Odd.Bot) Path to PyTorch model."
@@ -232,6 +228,11 @@ def make_oddbot_base():
         "--nms_iou_th",
         type=float,
         help="(Odd.Bot) Set output NMS IOU threshold to given value."
+    )
+    oddbot_base_parser.add_argument(
+        "--results_dir",
+        type=str,
+        help="(Odd.Bot) Results directory, where to save the output to."
     )
 
     return oddbot_base_parser
@@ -254,7 +255,6 @@ def make_validation_base():
 
     validation_base_parser.add_argument(
         "--ground_truth_src",
-        default="pt",
         choices=["pt", "sly"],
         help="(Odd.Bot) Whether to use the PyTorch predictions (pt) or Supervisely (sly) annotations as ground truth for comparing Hailo against."
     )
@@ -262,21 +262,18 @@ def make_validation_base():
     validation_base_parser.add_argument(
         "--similarity_th",
         type=float,
-        default=0.95,
         help="(Odd.Bot) Tolerated degradation w.r.t. the original PyTorch model."
     )
 
     validation_base_parser.add_argument(
         '--val_iou_th',
         type=float,
-        default=0.65,
         help='(Odd.Bot) The IOU threshold used to determine whether a prediction at certain conversion stage is the same as the PyTorch one. Higher is stricter.'
     )
 
     validation_base_parser.add_argument(
         '--vis_error_th',
         type=float,
-        default=None,
         help='(Odd.Bot) If specified, will save images/predictions with more than this number of mistakes.'
     )
 

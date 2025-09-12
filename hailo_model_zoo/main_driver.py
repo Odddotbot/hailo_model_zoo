@@ -460,14 +460,13 @@ def evaluate(args):
         )
 
 def validate(args):
-
-    results_dir = "/".join(args.pt_filepath.split("/weights")[:-1]) + '/conversion'
-    results_dir = 'conversion' # TODO remove this line
+    results_dir = f'{args.results_dir}/conversion'
     Path(results_dir).mkdir(exist_ok=True)
-
-    conversion_validation(args.pt_filepath, args.har_filepath, args.data_yaml, args.imgsize, args.ground_truth_src, args.nms_scores_th, args.nms_iou_th, args.similarity_th, args.vis_error_th, args.val_iou_th, results_dir)
-
-    # TODO: deleting the .har and .onnx files if conversion was succesfull?
+    conversion_validation(
+        args.pt_filepath, args.har_filepath, args.data_yaml, args.imgsize, args.ground_truth_src, 
+        args.hw_arch, args.nms_scores_th, args.nms_iou_th, args.similarity_th, args.vis_error_th, 
+        args.val_iou_th, results_dir
+    )
 
 
 def __get_batch_size(network_info, target):
