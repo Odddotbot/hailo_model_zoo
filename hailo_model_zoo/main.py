@@ -103,6 +103,17 @@ def _create_args_parser():
         help="(Odd.Bot) Validate the performance of a compiled Hailo model against the original PyTorch model.",
     )
 
+    subparsers.add_parser(
+        "compile_and_validate",
+        parents=[
+            oddbot_base_parser,
+            optimization_base_parser,
+            validation_base_parser,
+            parsing_base_parser,
+        ],
+        help="(Odd.Bot) Full model conversion pipeline, including optimization and performance validation.",
+    )
+
     # add parsers for plugins
     for command in HMZ_COMMANDS:
         command_parser = command.parser_fn()
@@ -153,7 +164,7 @@ def run(args):
         return command_to_handler[args.command](args)
 
     # we make sure to only import these now to keep loading & plugins fast
-    from hailo_model_zoo.main_driver import compile, evaluate, optimize, parse, profile, validate
+    from hailo_model_zoo.main_driver import compile, evaluate, optimize, parse, profile, validate, compile_and_validate
 
     handlers = {
         "parse": parse,
@@ -162,7 +173,7 @@ def run(args):
         "profile": profile,
         "eval": evaluate,
         "validate": validate, 
-        # "compile_and_validate": compile_and_validate (TODO, note that this should also delete the .har file)
+        "compile_and_validate": compile_and_validate
     }
 
     args = _process_config_file(args, command=args.command)

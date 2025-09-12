@@ -468,6 +468,12 @@ def validate(args):
         args.val_iou_th, results_dir
     )
 
+def compile_and_validate(args):
+    compile(args)
+    # TODO update inputs to validate
+    validate(args)
+    # TODO clean up the mess
+
 
 def __get_batch_size(network_info, target):
     if target == "full_precision":
