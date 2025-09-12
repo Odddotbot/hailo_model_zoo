@@ -1,0 +1,20 @@
+input:                                                                              # INPUT VARIABLES (always check!)
+  folder_of_training_run: /experiments/ca_2025_06_26/train/ca_20250626_all_XL       # Starting with /experiments
+  calib_path: /datasets/hailo_calibration/carrots_1024                              # Path folder with images to be used for calibration
+
+compile:                                                                            # CONVERSION VARIABLES
+  optimization_level: 3                                                             # How hard to try to make the .hef model similar to the .pt one (higher = less degration = longer compilation time)
+  compression_level: 0                                                              # How much to compress the model (higher = more degradation but faster inference)
+
+validate:                                                                           # VALIDATION VARIABLES
+  ground_truth_src: pt                                                              # What ground truth to compare the Hailo predictions against. Either PyTorch predictions (pt) or Supervisely annotation (sly)  
+  similarity_th: 0.95                                                               # What percentage of predictions must match the ground truth to pass validation
+  val_iou_th: 0.65                                                                  # The IoU threshold used for matching bounding boxes 
+  vis_error_th: null                                                                # If specified, saves all images with more than this number of mismatches
+
+base:                                                                               # OVERARCHING VARIABLES
+  model_filename: best.pt                                                           # Which model file to convert
+  classes: 2                                                                        # Number of detection classes
+  hw_arch: hailo8                                                                   # Hailo hardware type
+  hailo_arch_yaml: hailo_model_zoo/hailo_model_zoo/cfg/networks/yolov8x.yaml        # Path to neural net configuration file for Hailo
+  folder_of_model_registry: /model_registry                                         # Model registry

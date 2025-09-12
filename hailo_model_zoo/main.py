@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import importlib
+from pathlib import Path
 import yaml
 
 # we try to minimize imports to make 'main.py --help' responsive. So we only import definitions.
@@ -128,32 +129,38 @@ def _process_config_file(args, command='compile_and_validate'):
 
     if args.pt_filepath is None:
         args.pt_filepath = f'{config["input"]["folder_of_training_run"]}/weights/{config["base"]["model_filename"]}'
-    args.results_dir = args.pt_filepath.split("/weights")[0] if args.results_dir is None else args.results_dir
+    if args.results_dir is None:
+        args.results_dir = args.pt_filepath.split("/weights")[0]
+        args.results_dir = f"{args.results_dir}/hailo"
+        Path(args.results_dir).mkdir(exist_ok=True)
+    output_name = args.results_dir.split('/')[-2]
 
-    imgsize = config["base"]["imgsize"]
-    imgsize = (imgsize, imgsize) if type(imgsize)==int else imgsize
+    train_config_path = args.results_dir.replace("hailo", "args.yaml")
+    with open(train_config_path, 'r') as train_config_file:
+        train_config = yaml.safe_load(train_config_file)
+    imgsize = (train_config["imgsz"], train_config["imgsz"])
 
     args.imgsize = imgsize if args.imgsize is None else args.imgsize
     args.classes = config["base"]["classes"] if args.classes is None else args.classes
-    args.nms_scores_th = config["base"]["nms_scores_th"] if args.nms_scores_th is None else args.nms_scores_th
-    args.nms_iou_th = config["base"]["nms_iou_th"] if args.nms_iou_th is None else args.nms_iou_th
+    args.nms_scores_th = train_config["conf"] if args.nms_scores_th is None else args.nms_scores_th
+    args.nms_iou_th = train_config["iou"] if args.nms_iou_th is None else args.nms_iou_th
     args.hw_arch = config["base"]["hw_arch"] if args.hw_arch is None else args.hw_arch
 
     if command.startswith('compile'):
         args.yaml_path = config["base"]["hailo_arch_yaml"] if args.yaml_path is None else args.yaml_path
-        args.output_name = args.results_dir.split('/')[-1] if args.output_name is None else args.output_name
-        args.calib_path = config["compile"]["calib_path"] if args.calib_path is None else args.calib_path
+        args.output_name = output_name if args.output_name is None else args.output_name
+        args.calib_path = config["input"]["calib_path"] if args.calib_path is None else args.calib_path
         args.optimization_level = config["compile"]["optimization_level"] if args.optimization_level is None else args.optimization_level
         args.compression_level = config["compile"]["compression_level"] if args.compression_level is None else args.compression_level
 
-    if command.endswith('validate'):        
-        args.har_filepath = config["validate"]["har_filepath"] if args.har_filepath is None else args.har_filepath
-        args.data_yaml = config["validate"]["data_yaml"] if args.data_yaml is None else args.data_yaml
+    if command.endswith('validate'):
+        args.har_filepath = f"{args.results_dir}/{output_name}.har" if args.har_filepath is None else args.har_filepath
+        args.data_yaml = train_config["data"].replace("/home/thomas/Documents", "") if args.data_yaml is None else args.data_yaml
         args.ground_truth_src = config["validate"]["ground_truth_src"] if args.ground_truth_src is None else args.ground_truth_src
         args.similarity_th = config["validate"]["similarity_th"] if args.similarity_th is None else args.similarity_th
         args.val_iou_th = config["validate"]["val_iou_th"] if args.val_iou_th is None else args.val_iou_th
         args.vis_error_th = config["validate"]["vis_error_th"] if args.vis_error_th is None else args.vis_error_th
-        
+
     return args
 
 
