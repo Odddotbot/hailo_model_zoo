@@ -231,7 +231,8 @@ def make_oddbot_base():
     )
     oddbot_base_parser.add_argument(
         "--results_dir",
-        type=str,
+        default=None,
+        type=lambda string: Path(string),
         help="(Odd.Bot) Results directory, where to save the output to."
     )
 

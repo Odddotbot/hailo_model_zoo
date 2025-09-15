@@ -1,4 +1,6 @@
+import os
 from pathlib import Path
+import shutil
 
 try:
     from hailo_platform import HEF, PcieDevice
@@ -459,18 +461,34 @@ def evaluate(args):
             show_results_per_class=args.show_results_per_class,
         )
 
+
 def validate(args):
-    conversion_validation(
+    return conversion_validation(
         args.pt_filepath, args.har_filepath, args.data_yaml, args.imgsize, args.ground_truth_src, 
         args.hw_arch, args.nms_scores_th, args.nms_iou_th, args.similarity_th, args.vis_error_th, 
         args.val_iou_th, args.results_dir
     )
 
+
 def compile_and_validate(args):
+    logger = get_logger()
     compile(args)
-    # TODO update inputs to validate
-    validate(args)
-    # TODO clean up the mess
+    logger.info("Starting model performance validation...")
+    success, return_msg = validate(args)
+    success, return_msg = True, 'test'
+    logger.info(return_msg)
+    if success:
+        logger.info("Cleaning up...")
+        target_dir = f"{args.folder_of_model_registry}/{args.output_name}"
+        shutil.copy(args.pt_filepath, f"{target_dir}/model_weights.pt")
+        shutil.copy(str(args.results_dir).replace("hailo", "args.yaml"), f"{target_dir}/model_settings.yaml")
+        for filename in  ['confusion_matrix_normalized.png', 'F1_curve.png', 'results.png']:
+            shutil.copy(str(args.results_dir).replace("hailo", filename),
+                        f"{target_dir}/{filename}")
+        shutil.copy(f"{args.results_dir}/degradation.png", f"{target_dir}/degradation.png")
+        shutil.move(f"{args.results_dir}/{args.output_name}.hef", f"{target_dir}/{args.output_name}.hef")
+        os.remove(f"{args.results_dir}/{args.output_name}.har")
+    logger.info("Completed.")
 
 
 def __get_batch_size(network_info, target):

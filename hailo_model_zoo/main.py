@@ -129,13 +129,14 @@ def _process_config_file(args, command='compile_and_validate'):
 
     if args.pt_filepath is None:
         args.pt_filepath = f'{config["input"]["folder_of_training_run"]}/weights/{config["base"]["model_filename"]}'
+    output_name = args.pt_filepath.split("/")[-1]
     if args.results_dir is None:
-        args.results_dir = args.pt_filepath.split("/weights")[0]
-        args.results_dir = f"{args.results_dir}/hailo"
-        Path(args.results_dir).mkdir(exist_ok=True)
-    output_name = args.results_dir.split('/')[-2]
+        args.results_dir = Path(args.pt_filepath.split("/weights")[0])
+        args.results_dir = args.results_dir / "hailo"
+        args.results_dir.mkdir(exist_ok=True)
+        output_name = str(args.results_dir).split('/')[-2]
 
-    train_config_path = args.results_dir.replace("hailo", "args.yaml")
+    train_config_path = str(args.results_dir).replace("hailo", "args.yaml")
     with open(train_config_path, 'r') as train_config_file:
         train_config = yaml.safe_load(train_config_file)
     imgsize = (train_config["imgsz"], train_config["imgsz"])
@@ -161,6 +162,7 @@ def _process_config_file(args, command='compile_and_validate'):
         args.val_iou_th = config["validate"]["val_iou_th"] if args.val_iou_th is None else args.val_iou_th
         args.vis_error_th = config["validate"]["vis_error_th"] if args.vis_error_th is None else args.vis_error_th
 
+    args.folder_of_model_registry = config["base"]["folder_of_model_registry"]
     return args
 
 

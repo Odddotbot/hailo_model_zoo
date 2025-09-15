@@ -44,10 +44,11 @@ def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, i
     for i, stage in enumerate(conversion_results):
         similarity = similarity_data[i,-1] / 100
         if similarity <= similarity_th:
-            print(f"FAILED conversion validation at '{stage}' stage, similarity to .pt model ({np.round(similarity, 4)}) below threshold ({similarity_th}).")
-            return
+            return_msg = f"FAILED conversion validation at '{stage}' stage, similarity to .pt model ({np.round(similarity, 4)}) below threshold ({similarity_th})."
+            return False, return_msg
         
-    print(f"SUCCESS in conversion validation (similarity={np.round(similarity, 4)}).")
+    return_msg = f"SUCCESS in conversion validation (similarity={np.round(similarity, 4)})."
+    return True, return_msg
 
 
 def load_validation_data(data_yaml: str, imgsize: int) -> np.ndarray:

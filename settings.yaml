@@ -10,7 +10,7 @@ validate:                                                                       
   ground_truth_src: pt                                                              # What ground truth to compare the Hailo predictions against. Either PyTorch predictions (pt) or Supervisely annotation (sly)  
   similarity_th: 0.95                                                               # What percentage of predictions must match the ground truth to pass validation
   val_iou_th: 0.65                                                                  # The IoU threshold used for matching bounding boxes 
-  vis_error_th: null                                                                # If specified, saves all images with more than this number of mismatches
+  vis_error_th: 5                                                                   # If specified (not null), saves all images with more than this number of mismatches
 
 base:                                                                               # OVERARCHING VARIABLES
   model_filename: best.pt                                                           # Which model file to convert
