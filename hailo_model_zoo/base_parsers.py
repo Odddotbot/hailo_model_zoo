@@ -279,3 +279,27 @@ def make_validation_base():
     )
 
     return validation_base_parser
+
+
+def make_compile_and_validate_base():
+    compile_and_validate_base_parser = argparse.ArgumentParser(add_help=False)
+
+    compile_and_validate_base_parser.add_argument(
+        "--mlflow_exp_name",
+        type=str,
+        help="(Odd.Bot) Experiment name to log conversion run and validation metrics to."
+    )
+    
+    compile_and_validate_base_parser.add_argument(
+        "--mlflow_run_id",
+        type=str,
+        help="(Odd.Bot) Parent run ID to add conversion run and validation metrics to."
+    )
+
+    compile_and_validate_base_parser.add_argument(
+        "--no_mlflow",
+        action="store_true",
+        help="(Odd.Bot) Prevents the use of MLFlow for logging the compilation/conversion."
+    )
+
+    return compile_and_validate_base_parser

@@ -14,10 +14,13 @@ from hailo_model_zoo.base_parsers import (
     make_profiling_base,
     make_oddbot_base,
     make_validation_base,
+    make_compile_and_validate_base,
 )
 from hailo_model_zoo.utils.cli_utils import HMZ_COMMANDS
 from hailo_model_zoo.utils.plugin_utils import iter_namespace
 from hailo_model_zoo.utils.version import get_version
+
+import mlflow
 
 discovered_plugins = {
     name: importlib.import_module(name) for finder, name, ispkg in iter_namespace(hailo_model_zoo.plugin)
@@ -33,6 +36,7 @@ def _create_args_parser():
     evaluation_base_parser = make_evaluation_base()
     oddbot_base_parser = make_oddbot_base()
     validation_base_parser = make_validation_base()
+    compile_and_validate_base = make_compile_and_validate_base()
     version = get_version("hailo_model_zoo")
 
     # --- create per action subparser
@@ -111,6 +115,7 @@ def _create_args_parser():
             optimization_base_parser,
             validation_base_parser,
             parsing_base_parser,
+            compile_and_validate_base,
         ],
         help="(Odd.Bot) Full model conversion pipeline, including optimization and performance validation.",
     )
@@ -122,6 +127,18 @@ def _create_args_parser():
     return parser
 
 
+def _get_mlflow_run_id(exp_name, run_name):
+    mlflow.set_tracking_uri("http://localhost:5001")
+    runs =  mlflow.search_runs(experiment_names=[exp_name],
+                               filter_string=f"tags.mlflow.runName = '{run_name}'")
+    n_hits = len(runs)
+    if n_hits != 1:
+        raise ValueError(f"Run name '{run_name}' matched {n_hits} runs in experiment '{exp_name}'. Please use --mlflow_exp_name and --mlflow_run_id to specify correct MLFlow run or use --no_mlflow.")
+    else:
+        run_id = runs.iloc[0]["run_id"]
+        return run_id
+
+
 def _process_config_file(args, command='compile_and_validate'):
 
     with open(args.config, 'r') as config_file:
@@ -129,17 +146,20 @@ def _process_config_file(args, command='compile_and_validate'):
 
     if args.pt_filepath is None:
         args.pt_filepath = f'{config["input"]["folder_of_training_run"]}/weights/{config["base"]["model_filename"]}'
-    output_name = args.pt_filepath.split("/")[-1]
     if args.results_dir is None:
         args.results_dir = Path(args.pt_filepath.split("/weights")[0])
         args.results_dir = args.results_dir / "hailo"
         args.results_dir.mkdir(exist_ok=True)
-        output_name = str(args.results_dir).split('/')[-2]
 
     train_config_path = str(args.results_dir).replace("hailo", "args.yaml")
     with open(train_config_path, 'r') as train_config_file:
         train_config = yaml.safe_load(train_config_file)
     imgsize = (train_config["imgsz"], train_config["imgsz"])
+    output_name = train_config["name"]
+
+    if not args.no_mlflow:
+        args.mlflow_exp_name = train_config['project'] if args.mlflow_exp_name is None else args.mlflow_exp_name
+        args.mlflow_run_id = _get_mlflow_run_id(args.mlflow_exp_name, output_name) if args.mlflow_run_id is None else args.mlflow_run_id
 
     args.imgsize = imgsize if args.imgsize is None else args.imgsize
     args.classes = config["base"]["classes"] if args.classes is None else args.classes

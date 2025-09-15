@@ -13,6 +13,8 @@ from hailo_sdk_client.exposed_definitions import States
 from hailo_sdk_client.tools.profiler.react_report_generator import ReactReportGenerator
 from hailo_sdk_common.logger.logger import DeprecationVersion
 from hailo_sdk_common.targets.inference_targets import SdkFPOptimized, SdkPartialNumeric
+import mlflow # For logging
+import ultralytics # For YOLO .pt -> .onnx conversion
 
 from hailo_model_zoo.core.main_utils import (
     compile_model,
@@ -31,8 +33,6 @@ from hailo_model_zoo.core.main_utils import (
 from hailo_model_zoo.utils.hw_utils import DEVICE_NAMES, DEVICES, INFERENCE_TARGETS, TARGETS
 from hailo_model_zoo.utils.logger import get_logger
 from hailo_model_zoo.validation import conversion_validation
-import ultralytics # For YOLO .pt -> .onnx conversion
-
 
 def _ensure_performance(model_name, model_script, performance, hw_arch, logger):
     if not performance and is_network_performance(model_name, hw_arch):
@@ -472,14 +472,25 @@ def validate(args):
 
 def compile_and_validate(args):
     logger = get_logger()
-    compile(args)
-    logger.info("Starting model performance validation...")
-    success, return_msg = validate(args)
-    success, return_msg = True, 'test'
-    logger.info(return_msg)
-    if success:
+
+    mlflow.set_tracking_uri("http://localhost:5001")
+    exp_id = mlflow.get_experiment_by_name(args.mlflow_exp_name).experiment_id
+
+    with mlflow.start_run(run_name="Hailo model conversion", parent_run_id=args.mlflow_run_id, experiment_id=exp_id) as active_run:
+
+        # compile(args)
+        
+        logger.info("Starting model performance validation...")
+        success, return_msg, similarity = validate(args)
+        assert success is True, return_msg
+        logger.info(return_msg)
+
+        mlflow.log_params(vars(args))
+        mlflow.log_metric('hailo/similarity', similarity)
+
         logger.info("Cleaning up...")
         target_dir = f"{args.folder_of_model_registry}/{args.output_name}"
+        os.mkdir(target_dir)
         shutil.copy(args.pt_filepath, f"{target_dir}/model_weights.pt")
         shutil.copy(str(args.results_dir).replace("hailo", "args.yaml"), f"{target_dir}/model_settings.yaml")
         for filename in  ['confusion_matrix_normalized.png', 'F1_curve.png', 'results.png']:
@@ -488,7 +499,7 @@ def compile_and_validate(args):
         shutil.copy(f"{args.results_dir}/degradation.png", f"{target_dir}/degradation.png")
         shutil.move(f"{args.results_dir}/{args.output_name}.hef", f"{target_dir}/{args.output_name}.hef")
         os.remove(f"{args.results_dir}/{args.output_name}.har")
-    logger.info("Completed.")
+        logger.info("Completed.")
 
 
 def __get_batch_size(network_info, target):

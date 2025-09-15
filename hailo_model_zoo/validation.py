@@ -19,7 +19,7 @@ CLASSES = ['weed', 'crop']
 SIMILARITY_METRICS = ['matched', 'class confused', 'missed', 'novel', 'accuracy']
 
 
-def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, imgsize: tuple[int], ground_truth_src: str, hw_arch: str, nms_scores_th: float, nms_iou_th: float, similarity_th: float, vis_error_th: float, val_iou_th: float, results_dir: str):
+def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, imgsize: tuple[int], ground_truth_src: str, hw_arch: str, nms_scores_th: float, nms_iou_th: float, similarity_th: float, vis_error_th: float, val_iou_th: float, results_dir: str) -> tuple[bool, str, float]:
     # TODO: Not sure if all the variable names are like super duper interintuitive
 
     # Loading validation data
@@ -48,7 +48,7 @@ def conversion_validation(pt_filepath: str, har_filepath: str, data_yaml: str, i
             return False, return_msg
         
     return_msg = f"SUCCESS in conversion validation (similarity={np.round(similarity, 4)})."
-    return True, return_msg
+    return True, return_msg, similarity
 
 
 def load_validation_data(data_yaml: str, imgsize: int) -> np.ndarray:

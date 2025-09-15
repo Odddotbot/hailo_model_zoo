@@ -1,5 +1,5 @@
 input:                                                                              # INPUT VARIABLES (always check!)
-  folder_of_training_run: /experiments/ca_2025_06_26/train/ca_20250626_all_XL       # Starting with /experiments
+  folder_of_training_run: /experiments/ca_models_comparison/ca_plan_model_yolo8x    # Starting with /experiments
   calib_path: /datasets/hailo_calibration/carrots_1024                              # Path folder with images to be used for calibration
 
 compile:                                                                            # CONVERSION VARIABLES
