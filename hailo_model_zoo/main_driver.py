@@ -478,7 +478,7 @@ def compile_and_validate(args):
 
     with mlflow.start_run(run_name="Hailo model conversion", parent_run_id=args.mlflow_run_id, experiment_id=exp_id) as active_run:
 
-        # compile(args)
+        compile(args)
         
         logger.info("Starting model performance validation...")
         success, return_msg, similarity = validate(args)
