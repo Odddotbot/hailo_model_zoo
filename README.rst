@@ -19,18 +19,18 @@ Basic Usage
 
 2. Update ``settings.yaml``
 
-   * Always update
+   - Always update
       * ``folder_of_training_run``: Starting with /experiments (string)
       * ``calib_path``: Path folder with images to be used for calibration (string)
-   * Conversion variables:
+   - Conversion variables:
       * ``optimization_level``: How hard to try to make the .hef model similar to the .pt one (\[0,4\], higher = less degration = longer compilation time)
       * ``compression_level``: How much to compress the model (\[0,5\], higher = more degradation but faster inference)
-   * Validation variables
+   - Validation variables
       * ``ground_truth_src``: What ground truth to compare the Hailo predictions against. Either PyTorch predictions (pt) or Supervisely annotation (sly)  
       * ``similarity_th``: What proportion of predictions must match the ground truth to pass validation (float)
       * ``val_iou_th``: The IoU threshold used for matching bounding boxes (float)
       * ``vis_error_th``: If specified, saves all images with more than this number of mismatches (int)
-   * Overarching variables
+   - Overarching variables
       * ``model_filename``: Which model file to convert (string)
       * ``classes``: Number of detection classes (int)
       * ``hw_arch``: Hailo hardware type (string)
