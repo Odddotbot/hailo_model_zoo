@@ -1,22 +1,70 @@
 Hailo Model Zoo
 ===============
 
-Adaptations for Odd.Bot
------------------------
-The hailomz compile program was adapted for converting YOLO .pt models to Hailo .hef files. 
+Model Conversion for Odd.Bot
+----------------------------
+The Hailo Model Zoo was modified for: 
 
-For this usecase, please call the ``hailomz compile`` program with the following arguments:
+1. Converting Ultralytics' YOLO .pt files to Hailo .hef files
+2. Validating the compiled model performance with the original
+3. Uploading the compiled model + results to the model registry and MLFlow
 
-* | ``--pt_filepath`` - path to trained YOLO .pt file, which will be converted to .onnx as intermediate step.
-* | ``--calib-path`` - path to a directory with your calibration images in JPEG/png format
-* | ``--yaml`` - path to configuration YAML file. Find the one matching your YOLO architecture in 'hailo_model_zoo/cfg/networks'.
-* | ``--classes`` - number of classes to predict
-* | ``--imgsize`` - image size that the model is trained on. Can be a tuple or single value.
-* | ``--nms_scores_th`` - score threshold to use during NMS. 
-* | ``--nms_iou_th`` - IOU threshold to use during NMS. This should be the same as used during training to ensure identical results.
-* | ``--compression_level`` - degree of compression. Only increase this if inference is too low (results in degradation).
-* | ``--optimization_level`` - degree of optimization. Higher levels will cause longer runtimes but less degradation.
+Basic Usage
+^^^^^^^^^^^
+1. Navigate to the hailo folder
 
+  .. code-block::
+
+      cd ~/Documents/hailo
+
+2. Update ``settings.yaml``
+
+   * Always update
+      * ``folder_of_training_run``: Starting with /experiments (string)
+      * ``calib_path``: Path folder with images to be used for calibration (string)
+   * Conversion variables:
+      * ``optimization_level``: How hard to try to make the .hef model similar to the .pt one (\[0,4\], higher = less degration = longer compilation time)
+      * ``compression_level``: How much to compress the model (\[0,5\], higher = more degradation but faster inference)
+   * Validation variables
+      * ``ground_truth_src``: What ground truth to compare the Hailo predictions against. Either PyTorch predictions (pt) or Supervisely annotation (sly)  
+      * ``similarity_th``: What proportion of predictions must match the ground truth to pass validation (float)
+      * ``val_iou_th``: The IoU threshold used for matching bounding boxes (float)
+      * ``vis_error_th``: If specified, saves all images with more than this number of mismatches (int)
+   * Overarching variables
+      * ``model_filename``: Which model file to convert (string)
+      * ``classes``: Number of detection classes (int)
+      * ``hw_arch``: Hailo hardware type (string)
+      * ``hailo_arch_yaml``: Path to neural net configuration file for Hailo (string)
+      * ``folder_of_model_registry``: Model registry (string)
+
+3. Start the model conversion
+
+   .. code-block::
+      
+      docker compose run -d hailo_model_conversion
+
+
+This might take a few hours, depending on the optimization level. There are two possible outcomes:
+
+* Success: The model was successfully converted, obtaining a similar performance to that of the original model. The .hef file + model details are now in the model registry.
+* Failure: The validation failed. To see the results, go to the ``folder_of_training_run`` as specified in ``settings.yaml`` and inspect ``degradation.png``. In case the problem occurs before validation, please find the docker container ID with ``docker ps -a`` and check the logs using ``docker logs <container_id>``.
+
+
+Under the hood, the ``hailo_model_conversion`` Docker service just opens the Docker container and runs the ``hailomz compile_and_validate`` command as described under 'Advanced Usage'.
+Consequently, one can add extra flags to the command in ``compose.yaml`` (e.g. specifying a specific MLFlow run ID using ``--mlflow_run_id 1234``)
+
+
+Advanced usage
+^^^^^^^^^^^^^^
+Inside of the container, the conversion script can be used more flexibly. Here, one can choose between the following commands: 
+
+* ``hailomz compile_and_validate``: The full conversion + validation pipeline.
+* ``hailomz compile``: Only model conversion from YOLO .pt to .hef.
+* ``hailomz validate``: Validating the performance of a .hef model against a .pt one.
+
+The Docker service in 'Basic Usage' runs this command with the ``--config settings.yaml`` flag. This settings file is meant to make usage as easy as possible.
+For more flexible usage options, one can add other flags (run ``hailomz <command> --help``) that provide more low-level settings. 
+For example, with ``settings.yaml`` the IoU threshold is inferred, while you could also explicitly specify it with ``--nms_iou_th``.
 
 .. |python| image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue.svg
    :target: https://www.python.org/downloads/release/python-380/
