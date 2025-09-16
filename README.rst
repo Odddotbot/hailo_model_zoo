@@ -18,19 +18,20 @@ Basic Usage
       cd ~/Documents/hailo
 
 2. Update ``settings.yaml``
-   * ``folder_of_training_run`` (always check!): Starting with /experiments (string)
-   * ``calib_path`` (always check!): Path folder with images to be used for calibration (string)
-   * ``optimization_level``: How hard to try to make the .hef model similar to the .pt one (\[0,4\], higher = less degration = longer compilation time)
-   * ``compression_level``: How much to compress the model (\[0,5\], higher = more degradation but faster inference)
-   * ``ground_truth_src``: What ground truth to compare the Hailo predictions against. Either PyTorch predictions (pt) or Supervisely annotation (sly)  
-   * ``similarity_th``: What proportion of predictions must match the ground truth to pass validation (float=0.95)
-   * ``val_iou_th``: The IoU threshold used for matching bounding boxes (float=0.65)
-   * ``vis_error_th``: If specified, saves all images with more than this number of mismatches (int=5)
-   * ``model_filename``: Which model file to convert (string='best.pt')
-   * ``classes``: Number of detection classes (int=2)
-   * ``hw_arch``: Hailo hardware type (string='hailo8')
-   * ``hailo_arch_yaml``: Path to neural net configuration file for Hailo (string, depending on architecture)
-   * ``folder_of_model_registry``: Model registry (string='/model_registry')
+
+   - ``folder_of_training_run`` (always check!): Starting with /experiments (string)
+   - ``calib_path`` (always check!): Path folder with images to be used for calibration (string)
+   - ``optimization_level``: How hard to try to make the .hef model similar to the .pt one (\[0,4\], higher = less degration = longer compilation time)
+   - ``compression_level``: How much to compress the model (\[0,5\], higher = more degradation but faster inference)
+   - ``ground_truth_src``: What ground truth to compare the Hailo predictions against. Either PyTorch predictions (pt) or Supervisely annotation (sly)  
+   - ``similarity_th``: What proportion of predictions must match the ground truth to pass validation (float=0.95)
+   - ``val_iou_th``: The IoU threshold used for matching bounding boxes (float=0.65)
+   - ``vis_error_th``: If specified, saves all images with more than this number of mismatches (int=5)
+   - ``model_filename``: Which model file to convert (string='best.pt')
+   - ``classes``: Number of detection classes (int=2)
+   - ``hw_arch``: Hailo hardware type (string='hailo8')
+   - ``hailo_arch_yaml``: Path to neural net configuration file for Hailo (string, depending on architecture)
+   - ``folder_of_model_registry``: Model registry (string='/model_registry')
 
 3. Start the model conversion
 
